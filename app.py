@@ -104,6 +104,8 @@ if 'diagram_result' not in st.session_state:
     st.session_state.diagram_result = None
 if 'uploaded_image' not in st.session_state:
     st.session_state.uploaded_image = None
+if 'model_uploaded' not in st.session_state:
+    st.session_state.model_uploaded = False
 
 # ヘッダー
 st.markdown('<div class="main-header">🏗️ 構造力学解析アプリケーション</div>', unsafe_allow_html=True)
@@ -121,11 +123,30 @@ with st.sidebar:
     st.header("⚙️ 解析パラメータ")
     
     st.subheader("🤖 YOLOモデル")
-    if MODEL_PATH.exists():
+    
+    uploaded_model = st.file_uploader(
+        "YOLOモデルファイル (best.pt)",
+        type=['pt'],
+        help="学習済みYOLOモデルファイルをアップロード"
+    )
+    
+    if uploaded_model is not None:
+        # モデルファイルを一時保存
+        model_dir = Path(__file__).parent / "models"
+        model_dir.mkdir(exist_ok=True)
+        model_path = model_dir / "best.pt"
+        
+        with open(model_path, "wb") as f:
+            f.write(uploaded_model.read())
+        
+        st.success(f"✅ モデルファイルをアップロードしました")
+        st.session_state.model_uploaded = True
+    elif MODEL_PATH.exists():
         st.success(f"✅ モデルファイル: {MODEL_PATH.name}")
+        st.session_state.model_uploaded = True
     else:
-        st.error(f"❌ モデルファイルが見つかりません")
-        st.info(f"models/best.pt をリポジトリに配置してください")
+        st.warning("⚠️ YOLOモデルファイルをアップロードしてください")
+        st.session_state.model_uploaded = False
     
     st.divider()
     
@@ -227,9 +248,8 @@ if uploaded_file is not None:
     # STEP 2: 要素検出
     st.markdown('<div class="step-header">🔍 STEP 2: 要素検出</div>', unsafe_allow_html=True)
     
-    if not MODEL_PATH.exists():
-        st.warning(f"⚠️ YOLOモデルファイルが見つかりません: {MODEL_PATH}")
-        st.info("models/best.pt をリポジトリのルートディレクトリに配置してください")
+    if not st.session_state.get('model_uploaded', False):
+        st.warning("⚠️ YOLOモデルファイルをサイドバーからアップロードしてください")
     else:
         if st.button("🚀 要素検出を実行", key="detect_btn"):
             with st.spinner("YOLOモデルで要素を検出中..."):

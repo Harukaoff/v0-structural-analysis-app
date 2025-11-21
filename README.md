@@ -27,20 +27,21 @@
 
 ## セットアップ
 
-### 1. YOLOモデルの配置
+### 1. YOLOモデルの準備
 
-**重要**: YOLOモデルファイルをリポジトリに配置してください。
+**オプション1: リポジトリに配置（推奨）**
 
+\`\`\`bash
+# modelsディレクトリを作成
+mkdir -p models
+
+# 学習済みモデルをコピー
+cp /path/to/your/best.pt models/best.pt
 \`\`\`
-project/
-├── models/
-│   └── best.pt  ← ここにYOLOモデルファイルを配置
-├── scripts/
-├── app.py
-└── requirements.txt
-\`\`\`
 
-学習済みYOLOv8モデル (`best.pt`) を `models/` ディレクトリに配置してください。
+**オプション2: アプリからアップロード**
+
+アプリ起動後、サイドバーの「YOLOモデル」セクションから`best.pt`ファイルを直接アップロードできます。
 
 ### 2. 依存パッケージのインストール
 
