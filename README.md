@@ -88,7 +88,7 @@ streamlit run app.py
 教育目的での使用を想定しています。
 \`\`\`
 
-```text file=".streamlit/config.toml"
+\`\`\`text file=".streamlit/config.toml"
 [theme]
 primaryColor = "#0066cc"
 backgroundColor = "#ffffff"
