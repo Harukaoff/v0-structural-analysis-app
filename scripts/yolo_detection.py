@@ -38,36 +38,24 @@ _model_cache = {}
 
 def load_model(model_path=None):
     """Load YOLO model with caching"""
-    print(f"[v0] load_model called with path: {model_path}", file=sys.stderr)
-    
     if model_path is None:
         model_path = MODEL_PATH
     
     if isinstance(model_path, Path):
         model_path = str(model_path)
     
-    print(f"[v0] Checking model path: {model_path}", file=sys.stderr)
-    print(f"[v0] Model exists: {Path(model_path).exists()}", file=sys.stderr)
-    
     if model_path is None or not Path(model_path).exists():
-        print(f"[v0] Model not found at: {model_path}", file=sys.stderr)
         return None
     
     # Check cache
     if model_path in _model_cache:
-        print(f"[v0] Using cached model", file=sys.stderr)
         return _model_cache[model_path]
     
     try:
-        print(f"[v0] Loading YOLO model from: {model_path}", file=sys.stderr)
         model = YOLO(model_path)
         _model_cache[model_path] = model
-        print(f"[v0] Model loaded successfully", file=sys.stderr)
         return model
     except Exception as e:
-        print(f"[v0] Error loading model: {e}", file=sys.stderr)
-        import traceback
-        print(f"[v0] Traceback:\n{traceback.format_exc()}", file=sys.stderr)
         return None
 
 def decode_base64_image(base64_string):
@@ -84,38 +72,26 @@ def detect_elements(image_base64, model_path=None, conf_threshold=0.25):
     Detect structural elements in the image
     Returns detected elements with bounding boxes and classifications
     """
-    print(f"[v0] detect_elements called", file=sys.stderr)
-    print(f"[v0] Model path: {model_path}", file=sys.stderr)
-    print(f"[v0] Confidence threshold: {conf_threshold}", file=sys.stderr)
-    
     model = load_model(model_path)
     if model is None:
         error_msg = "Failed to load YOLO model. Please upload a model file."
-        print(f"[v0] {error_msg}", file=sys.stderr)
         return {"error": error_msg}
     
     try:
         # Decode image
-        print(f"[v0] Decoding image...", file=sys.stderr)
         image = decode_base64_image(image_base64)
-        print(f"[v0] Image decoded: {image.width}x{image.height}", file=sys.stderr)
         
         # Run YOLO detection
-        print(f"[v0] Running YOLO detection...", file=sys.stderr)
         results = model(image, conf=conf_threshold)
-        print(f"[v0] Detection complete, processing results...", file=sys.stderr)
         
         detected_elements = []
         
         for result in results:
             if hasattr(result, 'obb') and result.obb is not None:
                 # Oriented bounding boxes
-                print(f"[v0] Processing OBB detections...", file=sys.stderr)
                 boxes = result.obb.xyxyxyxy.cpu().numpy()
                 classes = result.obb.cls.cpu().numpy()
                 confidences = result.obb.conf.cpu().numpy()
-                
-                print(f"[v0] Found {len(boxes)} OBB detections", file=sys.stderr)
                 
                 for i, (box, cls, conf) in enumerate(zip(boxes, classes, confidences)):
                     element_type = CLASS_NAMES.get(int(cls), "unknown")
@@ -142,12 +118,9 @@ def detect_elements(image_base64, model_path=None, conf_threshold=0.25):
                     })
             elif hasattr(result, 'boxes') and result.boxes is not None:
                 # Regular bounding boxes
-                print(f"[v0] Processing regular box detections...", file=sys.stderr)
                 boxes = result.boxes.xyxy.cpu().numpy()
                 classes = result.boxes.cls.cpu().numpy()
                 confidences = result.boxes.conf.cpu().numpy()
-                
-                print(f"[v0] Found {len(boxes)} box detections", file=sys.stderr)
                 
                 for i, (box, cls, conf) in enumerate(zip(boxes, classes, confidences)):
                     element_type = CLASS_NAMES.get(int(cls), "unknown")
@@ -167,8 +140,6 @@ def detect_elements(image_base64, model_path=None, conf_threshold=0.25):
                         "height": float(y2 - y1)
                     })
         
-        print(f"[v0] Total elements detected: {len(detected_elements)}", file=sys.stderr)
-        
         return {
             "success": True,
             "image_width": image.width,
@@ -183,9 +154,6 @@ def detect_elements(image_base64, model_path=None, conf_threshold=0.25):
         
     except Exception as e:
         error_msg = f"Detection failed: {str(e)}"
-        print(f"[v0] {error_msg}", file=sys.stderr)
-        import traceback
-        print(f"[v0] Traceback:\n{traceback.format_exc()}", file=sys.stderr)
         return {"error": error_msg}
 
 if __name__ == "__main__":
