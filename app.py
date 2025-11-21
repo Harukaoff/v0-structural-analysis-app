@@ -14,13 +14,7 @@ from pathlib import Path
 import tempfile
 import os
 
-# スクリプトのインポート
-sys.path.append(str(Path(__file__).parent / "scripts"))
-
-from scripts.yolo_detection import detect_elements
-from scripts.template_cleanup import normalize_elements, draw_normalized_structure
-from scripts.structural_analysis import StructuralAnalyzer, prepare_analysis_data
-from scripts.generate_diagrams import generate_all_diagrams
+# スクリプトのインポートは使用時に行う（遅延ロード）
 
 # ページ設定
 st.set_page_config(
@@ -263,6 +257,9 @@ if uploaded_file is not None:
                     image_base64 = "data:image/png;base64," + image_to_base64(image)
                     
                     # YOLO検出実行
+                    sys.path.append(str(Path(__file__).parent / "scripts"))
+                    from scripts.yolo_detection import detect_elements
+                    
                     detection_result = detect_elements(
                         image_base64, 
                         model_path=st.session_state.model_path,
@@ -305,6 +302,9 @@ if uploaded_file is not None:
             with st.spinner("要素を正規化して清書中..."):
                 try:
                     # 正規化実行
+                    sys.path.append(str(Path(__file__).parent / "scripts"))
+                    from scripts.template_cleanup import normalize_elements, draw_normalized_structure
+                    
                     normalized_result = normalize_elements(st.session_state.detection_result.copy())
                     
                     # 荷重の大きさを設定
@@ -346,6 +346,9 @@ if uploaded_file is not None:
             with st.spinner("剛性マトリクス法で解析中..."):
                 try:
                     # 解析データの準備
+                    sys.path.append(str(Path(__file__).parent / "scripts"))
+                    from scripts.structural_analysis import StructuralAnalyzer, prepare_analysis_data
+                    
                     nodes, elements, supports, loads = prepare_analysis_data(st.session_state.normalized_result.copy())
                     
                     # 材料特性の設定
@@ -426,6 +429,9 @@ if uploaded_file is not None:
             with st.spinner("応力図を生成中..."):
                 try:
                     # 応力図生成
+                    sys.path.append(str(Path(__file__).parent / "scripts"))
+                    from scripts.generate_diagrams import generate_all_diagrams
+                    
                     diagram_result = generate_all_diagrams(
                         st.session_state.normalized_result.copy(),
                         st.session_state.analysis_result
