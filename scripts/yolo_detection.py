@@ -18,8 +18,8 @@ except ImportError:
     print(json.dumps({"error": "ultralytics not installed. Run: pip install ultralytics"}))
     sys.exit(1)
 
-# Model path
-MODEL_PATH = r"C:\Users\morim\Downloads\graduation\runs\obb\train31\weights\best.pt"
+# MODEL_PATH is now optional and can be overridden
+MODEL_PATH = None
 
 # Class names mapping
 CLASS_NAMES = {
@@ -34,12 +34,26 @@ CLASS_NAMES = {
     8: "momentR"
 }
 
-def load_model():
-    """Load YOLO model"""
+_model_cache = {}
+
+def load_model(model_path=None):
+    """Load YOLO model with caching"""
+    if model_path is None:
+        model_path = MODEL_PATH
+    
+    if model_path is None:
+        return None
+    
+    # Check cache
+    if model_path in _model_cache:
+        return _model_cache[model_path]
+    
     try:
-        model = YOLO(MODEL_PATH)
+        model = YOLO(model_path)
+        _model_cache[model_path] = model
         return model
     except Exception as e:
+        print(f"[v0] Error loading model: {e}", file=sys.stderr)
         return None
 
 def decode_base64_image(base64_string):
@@ -51,21 +65,21 @@ def decode_base64_image(base64_string):
     image = Image.open(BytesIO(image_data))
     return image
 
-def detect_elements(image_base64):
+def detect_elements(image_base64, model_path=None, conf_threshold=0.25):
     """
     Detect structural elements in the image
     Returns detected elements with bounding boxes and classifications
     """
-    model = load_model()
+    model = load_model(model_path)
     if model is None:
-        return {"error": "Failed to load YOLO model"}
+        return {"error": "Failed to load YOLO model. Please upload a model file."}
     
     try:
         # Decode image
         image = decode_base64_image(image_base64)
         
         # Run YOLO detection
-        results = model(image, conf=0.25)
+        results = model(image, conf=conf_threshold)
         
         detected_elements = []
         

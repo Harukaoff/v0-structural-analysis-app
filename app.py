@@ -11,6 +11,8 @@ import base64
 from io import BytesIO
 import sys
 from pathlib import Path
+import tempfile
+import os
 
 # スクリプトのインポート
 sys.path.append(str(Path(__file__).parent / "scripts"))
@@ -107,6 +109,8 @@ if 'diagram_result' not in st.session_state:
     st.session_state.diagram_result = None
 if 'uploaded_image' not in st.session_state:
     st.session_state.uploaded_image = None
+if 'model_path' not in st.session_state:
+    st.session_state.model_path = None
 
 # ヘッダー
 st.markdown('<div class="main-header">🏗️ 構造力学解析アプリケーション</div>', unsafe_allow_html=True)
@@ -122,6 +126,34 @@ st.markdown("""
 # サイドバー - パラメータ設定
 with st.sidebar:
     st.header("⚙️ 解析パラメータ")
+    
+    st.subheader("🤖 YOLOモデル")
+    st.markdown("""
+    <div style="background-color: #fff3cd; padding: 0.75rem; border-radius: 5px; border-left: 4px solid #ffc107; margin-bottom: 1rem; font-size: 0.9rem;">
+    ⚠️ <b>必須:</b> YOLOモデルファイル (.pt) をアップロードしてください。<br>
+    モデルは最初の検出実行時に読み込まれます。
+    </div>
+    """, unsafe_allow_html=True)
+    
+    model_file = st.file_uploader(
+        "YOLOモデルファイル (.pt)",
+        type=['pt'],
+        help="学習済みYOLOv8モデルファイルをアップロード"
+    )
+    
+    if model_file is not None:
+        # Save model to temporary file
+        if st.session_state.model_path is None or not os.path.exists(st.session_state.model_path):
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.pt') as tmp_file:
+                tmp_file.write(model_file.read())
+                st.session_state.model_path = tmp_file.name
+            st.success("✅ モデルファイルを読み込みました")
+        else:
+            st.success("✅ モデルファイル準備完了")
+    elif st.session_state.model_path is not None and os.path.exists(st.session_state.model_path):
+        st.success("✅ モデルファイル準備完了")
+    
+    st.divider()
     
     st.subheader("材料特性")
     E = st.number_input(
@@ -221,42 +253,49 @@ if uploaded_file is not None:
     # STEP 2: 要素検出
     st.markdown('<div class="step-header">🔍 STEP 2: 要素検出</div>', unsafe_allow_html=True)
     
-    if st.button("🚀 要素検出を実行", key="detect_btn"):
-        with st.spinner("YOLOモデルで要素を検出中..."):
-            try:
-                # 画像をBase64に変換
-                image_base64 = "data:image/png;base64," + image_to_base64(image)
-                
-                # YOLO検出実行
-                detection_result = detect_elements(image_base64)
-                
-                if "error" in detection_result:
-                    st.error(f"❌ エラー: {detection_result['error']}")
-                elif detection_result.get("success"):
-                    st.session_state.detection_result = detection_result
+    if st.session_state.model_path is None:
+        st.warning("⚠️ YOLOモデルファイルをアップロードしてください (サイドバー)")
+    else:
+        if st.button("🚀 要素検出を実行", key="detect_btn"):
+            with st.spinner("YOLOモデルで要素を検出中..."):
+                try:
+                    # 画像をBase64に変換
+                    image_base64 = "data:image/png;base64," + image_to_base64(image)
                     
-                    st.markdown('<div class="success-box">✅ 要素検出が完了しました!</div>', unsafe_allow_html=True)
+                    # YOLO検出実行
+                    detection_result = detect_elements(
+                        image_base64, 
+                        model_path=st.session_state.model_path,
+                        conf_threshold=confidence_threshold
+                    )
                     
-                    # 検出結果のサマリー
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("梁", detection_result['counts']['beam'])
-                    with col2:
-                        st.metric("支点", detection_result['counts']['supports'])
-                    with col3:
-                        st.metric("荷重", detection_result['counts']['loads'])
-                    
-                    # 検出された要素のリスト表示
-                    with st.expander("📋 検出された要素の詳細"):
-                        for element in detection_result['elements']:
-                            st.write(f"**{element['type']}** - ID: {element['id']}, 信頼度: {element['confidence']:.2%}")
-                else:
-                    st.error("検出に失敗しました")
-                    
-            except Exception as e:
-                st.error(f"❌ エラーが発生しました: {str(e)}")
-                import traceback
-                st.code(traceback.format_exc())
+                    if "error" in detection_result:
+                        st.error(f"❌ エラー: {detection_result['error']}")
+                    elif detection_result.get("success"):
+                        st.session_state.detection_result = detection_result
+                        
+                        st.markdown('<div class="success-box">✅ 要素検出が完了しました!</div>', unsafe_allow_html=True)
+                        
+                        # 検出結果のサマリー
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("梁", detection_result['counts']['beam'])
+                        with col2:
+                            st.metric("支点", detection_result['counts']['supports'])
+                        with col3:
+                            st.metric("荷重", detection_result['counts']['loads'])
+                        
+                        # 検出された要素のリスト表示
+                        with st.expander("📋 検出された要素の詳細"):
+                            for element in detection_result['elements']:
+                                st.write(f"**{element['type']}** - ID: {element['id']}, 信頼度: {element['confidence']:.2%}")
+                    else:
+                        st.error("検出に失敗しました")
+                        
+                except Exception as e:
+                    st.error(f"❌ エラーが発生しました: {str(e)}")
+                    import traceback
+                    st.code(traceback.format_exc())
     
     # STEP 3: 清書と正規化
     if st.session_state.detection_result is not None:
