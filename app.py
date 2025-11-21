@@ -229,7 +229,7 @@ if uploaded_file is not None:
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.image(image, caption="アップロードされた画像", use_container_width=True)
+        st.image(image, caption="アップロードされた画像", width="stretch")
     
     with col2:
         st.markdown("""
@@ -325,7 +325,7 @@ if uploaded_file is not None:
                     st.markdown('<div class="success-box">✅ 清書が完了しました!</div>', unsafe_allow_html=True)
                     
                     # 清書結果の表示
-                    st.image(base64_to_image(normalized_image), caption="清書された構造図", use_container_width=True)
+                    st.image(base64_to_image(normalized_image), caption="清書された構造図", width="stretch")
                     
                     # 節点情報の表示
                     with st.expander("🔗 節点情報"):
@@ -446,13 +446,13 @@ if uploaded_file is not None:
                         
                         # 応力図の表示
                         st.subheader("📉 変形図")
-                        st.image(base64_to_image(diagram_result['deformation_diagram']), use_container_width=True)
+                        st.image(base64_to_image(diagram_result['deformation_diagram']), width="stretch")
                         
                         st.subheader("🔴 せん断力図")
-                        st.image(base64_to_image(diagram_result['shear_diagram']), use_container_width=True)
+                        st.image(base64_to_image(diagram_result['shear_diagram']), width="stretch")
                         
                         st.subheader("🔵 曲げモーメント図")
-                        st.image(base64_to_image(diagram_result['moment_diagram']), use_container_width=True)
+                        st.image(base64_to_image(diagram_result['moment_diagram']), width="stretch")
                     else:
                         st.error("応力図の生成に失敗しました")
                         
