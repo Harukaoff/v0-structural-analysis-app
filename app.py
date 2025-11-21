@@ -252,49 +252,79 @@ if uploaded_file is not None:
         st.warning("⚠️ YOLOモデルファイルをサイドバーからアップロードしてください")
     else:
         if st.button("🚀 要素検出を実行", key="detect_btn"):
-            with st.spinner("YOLOモデルで要素を検出中..."):
-                try:
-                    # 画像をBase64に変換
-                    image_base64 = "data:image/png;base64," + image_to_base64(image)
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            try:
+                # Step 1: 画像をBase64に変換
+                status_text.text("📸 画像を処理中...")
+                progress_bar.progress(10)
+                print("[v0] Converting image to base64...", file=sys.stderr)
+                image_base64 = "data:image/png;base64," + image_to_base64(image)
+                print(f"[v0] Image base64 length: {len(image_base64)}", file=sys.stderr)
+                
+                # Step 2: YOLOモジュールをインポート
+                status_text.text("🔧 YOLOモジュールを読み込み中...")
+                progress_bar.progress(20)
+                print("[v0] Importing YOLO detection module...", file=sys.stderr)
+                sys.path.append(str(Path(__file__).parent / "scripts"))
+                from scripts.yolo_detection import detect_elements
+                print("[v0] YOLO module imported successfully", file=sys.stderr)
+                
+                # Step 3: YOLOモデルで検出実行
+                status_text.text("🤖 YOLOモデルで要素を検出中... (これには時間がかかる場合があります)")
+                progress_bar.progress(40)
+                print(f"[v0] Starting detection with model: {MODEL_PATH}", file=sys.stderr)
+                print(f"[v0] Confidence threshold: {confidence_threshold}", file=sys.stderr)
+                
+                detection_result = detect_elements(
+                    image_base64, 
+                    model_path=str(MODEL_PATH),
+                    conf_threshold=confidence_threshold
+                )
+                
+                print(f"[v0] Detection completed: {detection_result.get('success', False)}", file=sys.stderr)
+                progress_bar.progress(80)
+                
+                if "error" in detection_result:
+                    st.error(f"❌ エラー: {detection_result['error']}")
+                    print(f"[v0] Detection error: {detection_result['error']}", file=sys.stderr)
+                elif detection_result.get("success"):
+                    status_text.text("✅ 検出完了!")
+                    progress_bar.progress(100)
                     
-                    # YOLO検出実行
-                    sys.path.append(str(Path(__file__).parent / "scripts"))
-                    from scripts.yolo_detection import detect_elements
+                    st.session_state.detection_result = detection_result
                     
-                    detection_result = detect_elements(
-                        image_base64, 
-                        model_path=str(MODEL_PATH),
-                        conf_threshold=confidence_threshold
-                    )
+                    st.markdown('<div class="success-box">✅ 要素検出が完了しました!</div>', unsafe_allow_html=True)
                     
-                    if "error" in detection_result:
-                        st.error(f"❌ エラー: {detection_result['error']}")
-                    elif detection_result.get("success"):
-                        st.session_state.detection_result = detection_result
-                        
-                        st.markdown('<div class="success-box">✅ 要素検出が完了しました!</div>', unsafe_allow_html=True)
-                        
-                        # 検出結果のサマリー
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("梁", detection_result['counts']['beam'])
-                        with col2:
-                            st.metric("支点", detection_result['counts']['supports'])
-                        with col3:
-                            st.metric("荷重", detection_result['counts']['loads'])
-                        
-                        # 検出された要素のリスト表示
-                        with st.expander("📋 検出された要素の詳細"):
-                            for element in detection_result['elements']:
-                                st.write(f"**{element['type']}** - ID: {element['id']}, 信頼度: {element['confidence']:.2%}")
-                    else:
-                        st.error("検出に失敗しました")
-                        
-                except Exception as e:
-                    st.error(f"❌ エラーが発生しました: {str(e)}")
-                    import traceback
-                    st.code(traceback.format_exc())
-    
+                    # 検出結果のサマリー
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("梁", detection_result['counts']['beam'])
+                    with col2:
+                        st.metric("支点", detection_result['counts']['supports'])
+                    with col3:
+                        st.metric("荷重", detection_result['counts']['loads'])
+                    
+                    # 検出された要素のリスト表示
+                    with st.expander("📋 検出された要素の詳細"):
+                        for element in detection_result['elements']:
+                            st.write(f"**{element['type']}** - ID: {element['id']}, 信頼度: {element['confidence']:.2%}")
+                else:
+                    st.error("検出に失敗しました")
+                    print("[v0] Detection failed without error message", file=sys.stderr)
+                    
+            except Exception as e:
+                st.error(f"❌ エラーが発生しました: {str(e)}")
+                print(f"[v0] Exception occurred: {str(e)}", file=sys.stderr)
+                import traceback
+                error_trace = traceback.format_exc()
+                print(f"[v0] Traceback:\n{error_trace}", file=sys.stderr)
+                st.code(error_trace)
+            finally:
+                progress_bar.empty()
+                status_text.empty()
+
     # STEP 3: 清書と正規化
     if st.session_state.detection_result is not None:
         st.markdown('<div class="step-header">✏️ STEP 3: 清書と正規化</div>', unsafe_allow_html=True)
