@@ -11,7 +11,6 @@ import base64
 from io import BytesIO
 import sys
 from pathlib import Path
-import tempfile
 import os
 
 # スクリプトのインポートは使用時に行う（遅延ロード）
@@ -92,6 +91,8 @@ def base64_to_image(base64_string):
     image_data = base64.b64decode(base64_string)
     return Image.open(BytesIO(image_data))
 
+MODEL_PATH = Path(__file__).parent / "models" / "best.pt"
+
 # セッション状態の初期化
 if 'detection_result' not in st.session_state:
     st.session_state.detection_result = None
@@ -103,8 +104,6 @@ if 'diagram_result' not in st.session_state:
     st.session_state.diagram_result = None
 if 'uploaded_image' not in st.session_state:
     st.session_state.uploaded_image = None
-if 'model_path' not in st.session_state:
-    st.session_state.model_path = None
 
 # ヘッダー
 st.markdown('<div class="main-header">🏗️ 構造力学解析アプリケーション</div>', unsafe_allow_html=True)
@@ -122,30 +121,11 @@ with st.sidebar:
     st.header("⚙️ 解析パラメータ")
     
     st.subheader("🤖 YOLOモデル")
-    st.markdown("""
-    <div style="background-color: #fff3cd; padding: 0.75rem; border-radius: 5px; border-left: 4px solid #ffc107; margin-bottom: 1rem; font-size: 0.9rem;">
-    ⚠️ <b>必須:</b> YOLOモデルファイル (.pt) をアップロードしてください。<br>
-    モデルは最初の検出実行時に読み込まれます。
-    </div>
-    """, unsafe_allow_html=True)
-    
-    model_file = st.file_uploader(
-        "YOLOモデルファイル (.pt)",
-        type=['pt'],
-        help="学習済みYOLOv8モデルファイルをアップロード"
-    )
-    
-    if model_file is not None:
-        # Save model to temporary file
-        if st.session_state.model_path is None or not os.path.exists(st.session_state.model_path):
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.pt') as tmp_file:
-                tmp_file.write(model_file.read())
-                st.session_state.model_path = tmp_file.name
-            st.success("✅ モデルファイルを読み込みました")
-        else:
-            st.success("✅ モデルファイル準備完了")
-    elif st.session_state.model_path is not None and os.path.exists(st.session_state.model_path):
-        st.success("✅ モデルファイル準備完了")
+    if MODEL_PATH.exists():
+        st.success(f"✅ モデルファイル: {MODEL_PATH.name}")
+    else:
+        st.error(f"❌ モデルファイルが見つかりません")
+        st.info(f"models/best.pt をリポジトリに配置してください")
     
     st.divider()
     
@@ -247,8 +227,9 @@ if uploaded_file is not None:
     # STEP 2: 要素検出
     st.markdown('<div class="step-header">🔍 STEP 2: 要素検出</div>', unsafe_allow_html=True)
     
-    if st.session_state.model_path is None:
-        st.warning("⚠️ YOLOモデルファイルをアップロードしてください (サイドバー)")
+    if not MODEL_PATH.exists():
+        st.warning(f"⚠️ YOLOモデルファイルが見つかりません: {MODEL_PATH}")
+        st.info("models/best.pt をリポジトリのルートディレクトリに配置してください")
     else:
         if st.button("🚀 要素検出を実行", key="detect_btn"):
             with st.spinner("YOLOモデルで要素を検出中..."):
@@ -262,7 +243,7 @@ if uploaded_file is not None:
                     
                     detection_result = detect_elements(
                         image_base64, 
-                        model_path=st.session_state.model_path,
+                        model_path=str(MODEL_PATH),
                         conf_threshold=confidence_threshold
                     )
                     

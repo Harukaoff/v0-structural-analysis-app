@@ -1,6 +1,6 @@
 # 構造力学解析アプリケーション
 
-手書きの梁構造図面を画像認識で自動解析し、剛性マトリクス法を用いて構造解析を行うWebアプリケーションです。
+手書きの梁構造図面を画像認識で自動解析し、剛性マトリクス法を用いて構造解析を行うStreamlitアプリケーションです。
 
 ## 機能
 
@@ -27,24 +27,20 @@
 
 ## セットアップ
 
-### 1. 必要なファイルの配置
+### 1. YOLOモデルの配置
 
-YOLOモデルとテンプレート画像を配置してください:
+**重要**: YOLOモデルファイルをリポジトリに配置してください。
 
 \`\`\`
-C:\Users\morim\Downloads\graduation\
-├── runs\obb\train31\weights\best.pt  # YOLOモデル
-└── templates\
-    ├── hinge.png
-    ├── pin.png
-    ├── roller.png
-    ├── fixed.png
-    ├── UDL.png
-    ├── load.png
-    ├── beam.png
-    ├── momentR.png
-    └── momentL.png
+project/
+├── models/
+│   └── best.pt  ← ここにYOLOモデルファイルを配置
+├── scripts/
+├── app.py
+└── requirements.txt
 \`\`\`
+
+学習済みYOLOv8モデル (`best.pt`) を `models/` ディレクトリに配置してください。
 
 ### 2. 依存パッケージのインストール
 
@@ -76,26 +72,35 @@ streamlit run app.py
 - **荷重設定**: 点荷重、等分布荷重、モーメントの大きさ
 - **検出パラメータ**: 信頼度閾値、接続判定距離
 
+## プロジェクト構成
+
+\`\`\`
+.
+├── app.py                          # Streamlitメインアプリ
+├── models/
+│   └── best.pt                     # YOLOモデル (ユーザーが配置)
+├── scripts/
+│   ├── yolo_detection.py           # YOLO要素検出
+│   ├── template_cleanup.py         # 清書・正規化
+│   ├── structural_analysis.py      # 構造解析
+│   └── generate_diagrams.py        # 応力図生成
+├── requirements.txt                # Python依存関係
+└── README.md                       # このファイル
+\`\`\`
+
 ## 技術スタック
 
 - **フロントエンド**: Streamlit
 - **画像認識**: YOLOv8 (Ultralytics)
-- **構造解析**: NumPy, SciPy
+- **構造解析**: NumPy, SciPy (剛性マトリクス法)
 - **可視化**: Matplotlib, Pillow
+
+## 注意事項
+
+- YOLOモデルファイル (`best.pt`) は著作権の関係上、リポジトリには含まれていません
+- 自身で学習したモデル、または提供されたモデルを `models/` ディレクトリに配置してください
+- モデルファイルは100MB以上になる場合があるため、Git LFSの使用を推奨します
 
 ## ライセンス
 
 教育目的での使用を想定しています。
-\`\`\`
-
-\`\`\`text file=".streamlit/config.toml"
-[theme]
-primaryColor = "#0066cc"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f0f8ff"
-textColor = "#262730"
-font = "sans serif"
-
-[server]
-maxUploadSize = 10
-enableXsrfProtection = true

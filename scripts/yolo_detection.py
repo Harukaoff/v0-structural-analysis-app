@@ -19,7 +19,7 @@ except ImportError:
     sys.exit(1)
 
 # MODEL_PATH is now optional and can be overridden
-MODEL_PATH = None
+MODEL_PATH = Path(__file__).parent.parent / "models" / "best.pt"
 
 # Class names mapping
 CLASS_NAMES = {
@@ -41,7 +41,10 @@ def load_model(model_path=None):
     if model_path is None:
         model_path = MODEL_PATH
     
-    if model_path is None:
+    if isinstance(model_path, Path):
+        model_path = str(model_path)
+    
+    if model_path is None or not Path(model_path).exists():
         return None
     
     # Check cache
