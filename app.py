@@ -253,9 +253,7 @@ if uploaded_file is not None:
     if not st.session_state.get('model_uploaded', False):
         st.warning("⚠️ YOLOモデルファイルをサイドバーからアップロードしてください")
     else:
-        detect_btn = st.button("🚀 要素検出を実行", key="detect_btn", use_container_width=True)
-            
-        if detect_btn:
+        if st.button("🚀 要素検出を実行", key="detect_btn"):
             progress_bar = st.progress(0)
             status_text = st.empty()
             
@@ -290,7 +288,7 @@ if uploaded_file is not None:
                     progress_bar.progress(100)
                     
                     st.session_state.detection_result = detection_result
-                    st.success("✅ 要素検出が完了しました! 結果は下に表示されています。")
+                    st.rerun()  # ページを再実行して結果を表示
                     
                 else:
                     st.error("検出に失敗しました")
@@ -303,24 +301,24 @@ if uploaded_file is not None:
             finally:
                 progress_bar.empty()
                 status_text.empty()
+    
+    if st.session_state.detection_result is not None:
+        st.markdown('<div class="success-box">✅ 要素検出が完了しました!</div>', unsafe_allow_html=True)
         
-        if st.session_state.detection_result is not None:
-            st.markdown('<div class="success-box">✅ 要素検出が完了しました!</div>', unsafe_allow_html=True)
-            
-            result = st.session_state.detection_result
-            # 検出結果のサマリー
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("梁", result['counts']['beam'])
-            with col2:
-                st.metric("支点", result['counts']['supports'])
-            with col3:
-                st.metric("荷重", result['counts']['loads'])
-            
-            # 検出された要素のリスト表示
-            with st.expander("📋 検出された要素の詳細"):
-                for element in result['elements']:
-                    st.write(f"**{element['type']}** - ID: {element['id']}, 信頼度: {element['confidence']:.2%}")
+        result = st.session_state.detection_result
+        # 検出結果のサマリー
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("梁", result['counts']['beam'])
+        with col2:
+            st.metric("支点", result['counts']['supports'])
+        with col3:
+            st.metric("荷重", result['counts']['loads'])
+        
+        # 検出された要素のリスト表示
+        with st.expander("📋 検出された要素の詳細"):
+            for element in result['elements']:
+                st.write(f"**{element['type']}** - ID: {element['id']}, 信頼度: {element['confidence']:.2%}")
 
     # STEP 3: 清書と正規化
     if st.session_state.detection_result is not None:
