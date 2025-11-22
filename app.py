@@ -253,77 +253,58 @@ if uploaded_file is not None:
     if not st.session_state.get('model_uploaded', False):
         st.warning("⚠️ YOLOモデルファイルをサイドバーからアップロードしてください")
     else:
-        with st.form(key="detection_form"):
-            detect_btn = st.form_submit_button("🚀 要素検出を実行", use_container_width=True)
+        detect_btn = st.button("🚀 要素検出を実行", key="detect_btn", use_container_width=True)
             
         if detect_btn:
-            if not st.session_state.detection_processing:
-                st.session_state.detection_processing = True
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            try:
+                # Step 1: 画像をBase64に変換
+                status_text.text("📸 画像を処理中...")
+                progress_bar.progress(10)
+                image_base64 = "data:image/png;base64," + image_to_base64(image)
                 
-                progress_bar = st.progress(0)
-                status_text = st.empty()
+                # Step 2: YOLOモジュールをインポート
+                status_text.text("🔧 YOLOモジュールを読み込み中...")
+                progress_bar.progress(20)
+                sys.path.append(str(Path(__file__).parent / "scripts"))
+                from scripts.yolo_detection import detect_elements
                 
-                try:
-                    # Step 1: 画像をBase64に変換
-                    status_text.text("📸 画像を処理中...")
-                    progress_bar.progress(10)
-                    image_base64 = "data:image/png;base64," + image_to_base64(image)
+                # Step 3: YOLOモデルで検出実行
+                status_text.text("🤖 YOLOモデルで要素を検出中... (これには時間がかかる場合があります)")
+                progress_bar.progress(40)
+                
+                detection_result = detect_elements(
+                    image_base64, 
+                    model_path=str(MODEL_PATH),
+                    conf_threshold=confidence_threshold
+                )
+                
+                progress_bar.progress(80)
+                
+                if "error" in detection_result:
+                    st.error(f"❌ エラー: {detection_result['error']}")
+                elif detection_result.get("success"):
+                    status_text.text("✅ 検出完了!")
+                    progress_bar.progress(100)
                     
-                    # Step 2: YOLOモジュールをインポート
-                    status_text.text("🔧 YOLOモジュールを読み込み中...")
-                    progress_bar.progress(20)
-                    sys.path.append(str(Path(__file__).parent / "scripts"))
-                    from scripts.yolo_detection import detect_elements
+                    st.session_state.detection_result = detection_result
+                    st.success("✅ 要素検出が完了しました! 結果は下に表示されています。")
                     
-                    # Step 3: YOLOモデルで検出実行
-                    status_text.text("🤖 YOLOモデルで要素を検出中... (これには時間がかかる場合があります)")
-                    progress_bar.progress(40)
+                else:
+                    st.error("検出に失敗しました")
                     
-                    detection_result = detect_elements(
-                        image_base64, 
-                        model_path=str(MODEL_PATH),
-                        conf_threshold=confidence_threshold
-                    )
-                    
-                    progress_bar.progress(80)
-                    
-                    if "error" in detection_result:
-                        st.error(f"❌ エラー: {detection_result['error']}")
-                    elif detection_result.get("success"):
-                        status_text.text("✅ 検出完了!")
-                        progress_bar.progress(100)
-                        
-                        st.session_state.detection_result = detection_result
-                        
-                        st.markdown('<div class="success-box">✅ 要素検出が完了しました!</div>', unsafe_allow_html=True)
-                        
-                        # 検出結果のサマリー
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("梁", detection_result['counts']['beam'])
-                        with col2:
-                            st.metric("支点", detection_result['counts']['supports'])
-                        with col3:
-                            st.metric("荷重", detection_result['counts']['loads'])
-                        
-                        # 検出された要素のリスト表示
-                        with st.expander("📋 検出された要素の詳細"):
-                            for element in detection_result['elements']:
-                                st.write(f"**{element['type']}** - ID: {element['id']}, 信頼度: {element['confidence']:.2%}")
-                    else:
-                        st.error("検出に失敗しました")
-                        
-                except Exception as e:
-                    st.error(f"❌ エラーが発生しました: {str(e)}")
-                    import traceback
-                    error_trace = traceback.format_exc()
-                    st.code(error_trace)
-                finally:
-                    progress_bar.empty()
-                    status_text.empty()
-                    st.session_state.detection_processing = False
+            except Exception as e:
+                st.error(f"❌ エラーが発生しました: {str(e)}")
+                import traceback
+                error_trace = traceback.format_exc()
+                st.code(error_trace)
+            finally:
+                progress_bar.empty()
+                status_text.empty()
         
-        if st.session_state.detection_result is not None and not detect_btn:
+        if st.session_state.detection_result is not None:
             st.markdown('<div class="success-box">✅ 要素検出が完了しました!</div>', unsafe_allow_html=True)
             
             result = st.session_state.detection_result
